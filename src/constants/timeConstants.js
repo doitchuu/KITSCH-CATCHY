@@ -1,6 +1,6 @@
 const TIME = {
   TOAST: 3000,
-  MOVE_SPEED: 0.3,
+  MOVE_SPEED: 1,
   FLASH: 300,
   DELAY: 150,
 };
