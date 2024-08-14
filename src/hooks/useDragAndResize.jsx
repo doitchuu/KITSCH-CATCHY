@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TIME from "../constants/timeConstants";
 import SIZE from "../constants/sizeConstants";
 
@@ -11,31 +11,38 @@ function useDragAndResize({
   id,
 }) {
   const [position, setPosition] = useState(initialPosition);
-  const [size, setSize] = useState(initialSize);
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
+  const [size, setSize] = useState(initialSize);
 
-  function handleMouseMove(event) {
-    if (dragging) {
-      setPosition((prev) => ({
-        x: prev.x + event.movementX * TIME.MOVE_SPEED,
-        y: prev.y + event.movementY * TIME.MOVE_SPEED,
-      }));
-    } else if (resizing) {
-      const newWidth = Math.max(
-        size.width + event.movementX,
-        SIZE.MIN_IMAGE_SIZE,
-      );
-      const newHeight = newWidth / aspectRatio;
+  const handleMouseMove = useCallback(
+    (event) => {
+      if (dragging) {
+        setPosition((prev) => ({
+          x: prev.x + event.movementX * TIME.MOVE_SPEED,
+          y: prev.y + event.movementY * TIME.MOVE_SPEED,
+        }));
 
-      setSize({
-        width: newWidth,
-        height: newHeight,
-      });
-    }
-  }
+        return;
+      }
 
-  function handleMouseUp() {
+      if (resizing) {
+        const newWidth = Math.max(
+          size.width + event.movementX * TIME.MOVE_SPEED,
+          SIZE.MIN_IMAGE_SIZE,
+        );
+        const newHeight = newWidth / aspectRatio;
+
+        setSize({
+          width: newWidth,
+          height: newHeight,
+        });
+      }
+    },
+    [dragging, resizing, size, aspectRatio],
+  );
+
+  const handleMouseUp = useCallback(() => {
     if (dragging) {
       onDragEnd(id, { ...position });
       setDragging(false);
@@ -48,14 +55,28 @@ function useDragAndResize({
 
     window.removeEventListener("mousemove", handleMouseMove);
     window.removeEventListener("mouseup", handleMouseUp);
-  }
+  }, [
+    dragging,
+    resizing,
+    position,
+    size,
+    onDragEnd,
+    onResize,
+    id,
+    handleMouseMove,
+  ]);
 
   useEffect(() => {
     if (dragging || resizing) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     }
-  }, [dragging, resizing, position, size, onDragEnd, onResize]);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragging, resizing, handleMouseMove, handleMouseUp]);
 
   return { position, size, setDragging, setResizing };
 }
